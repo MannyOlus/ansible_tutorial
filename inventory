@@ -1,10 +1,12 @@
-[host]
+[hosts]
 localhost
+[hosts:vars]
+ansible_connection=local
 
 [ubuntu] 
-192.168.1.112
-192.168.1.118
+192.168.1.112 ansible_user=ansible
+192.168.1.118 ansible_user=ansible
 
 [linux] 
-192.168.1.112
-192.168.1.118
+192.168.1.112 ansible_user=ansible
+192.168.1.118 ansible_user=ansible
