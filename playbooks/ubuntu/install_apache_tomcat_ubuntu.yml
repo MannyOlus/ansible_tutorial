@@ -1,0 +1,122 @@
+---
+- name: Install and configure Apache Tomcat 10
+  hosts: ubuntu
+  become: true
+  tasks:
+  
+    # Update the system's package cache
+    - name: Update and upgrade the apt cache
+      apt:
+        update_cache: yes
+        upgrade: yes
+
+    # Install OpenJDK 11 with -y flag to automatically accept prompts
+    - name: Install OpenJDK 11
+      apt:
+        name: openjdk-11-jdk
+        state: present
+        update_cache: yes
+
+    # Create the tomcat group
+    - name: Create a Tomcat group
+      group:
+        name: tomcat
+
+    # Create the tomcat user and assign to tomcat group
+    # Disable shell access for security reasons
+    - name: Create a Tomcat user with no login shell
+      user:
+        name: tomcat
+        group: tomcat
+        shell: /bin/false
+        system: yes
+
+    # Create a directory to store Tomcat
+    - name: Create Tomcat installation directory
+      file:
+        path: /opt/tomcat
+        state: directory
+        owner: tomcat
+        group: tomcat
+        mode: '0755'
+
+    # Download Tomcat 10
+    - name: Download Tomcat 10
+      get_url:
+        url: https://downloads.apache.org/tomcat/tomcat-10/v10.1.30/bin/apache-tomcat-10.1.30.tar.gz
+        dest: /tmp/apache-tomcat-10.1.30.tar.gz
+
+    # Extract the Tomcat tar.gz file into /opt/tomcat directory
+    - name: Extract Tomcat archive
+      unarchive:
+        src: /tmp/apache-tomcat-10.1.30.tar.gz
+        dest: /opt/tomcat
+        remote_src: yes
+        extra_opts: [--strip-components=1]
+
+    # Adjust ownership of Tomcat files to the tomcat user and group
+    - name: Adjust ownership of the Tomcat directory
+      file:
+        path: /opt/tomcat
+        owner: tomcat
+        group: tomcat
+        recurse: yes
+
+    # Change permission of all .sh files in /opt/tomcat/bin to be executable
+    - name: Make Tomcat shell scripts executable
+      shell: find /opt/tomcat/bin/ -name "*.sh" -exec chmod +x {} \;
+
+    # Ensure all Tomcat files are owned by the tomcat user and group
+    - name: Ensure Tomcat directory is owned by the tomcat user and group
+      command: "chown -R tomcat:tomcat /opt/tomcat"
+
+    # Create a systemd service file for Tomcat
+    - name: Create Tomcat systemd service file
+      copy:
+        dest: /etc/systemd/system/tomcat.service
+        content: |
+          [Unit]
+          Description=Apache Tomcat Web Application Container
+          After=network.target
+
+          [Service]
+          Type=forking
+
+          User=tomcat
+          Group=tomcat
+
+          Environment="JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64"
+          Environment="CATALINA_PID=/opt/tomcat/temp/tomcat.pid"
+          Environment="CATALINA_HOME=/opt/tomcat"
+          Environment="CATALINA_BASE=/opt/tomcat"
+          Environment="CATALINA_OPTS=-Xms512M -Xmx1024M -server -XX:+UseParallelGC"
+          Environment="JAVA_OPTS=-Djava.security.egd=file:/dev/./urandom -Djava.awt.headless=true"
+
+          ExecStart=/opt/tomcat/bin/startup.sh
+          ExecStop=/opt/tomcat/bin/shutdown.sh
+
+          Restart=on-failure
+
+          [Install]
+          WantedBy=multi-user.target
+
+    # Reload systemd daemon to apply new service file
+    - name: Reload systemd daemon
+      systemd:
+        daemon_reload: yes
+
+    # Start and enable the Tomcat service
+    - name: Start and enable Tomcat service
+      systemd:
+        name: tomcat
+        state: started
+        enabled: yes
+
+    # Ensure that port 8080 is open for Tomcat
+    - name: Allow port 8080 in UFW
+      ufw:
+        rule: allow
+        port: 8080
+        proto: tcp
+        comment: Allow Tomcat traffic
+

@@ -1,0 +1,16 @@
+---
+- name: Create user account 'James Madis' with an initial password and bash shell
+  hosts: ubuntu
+  become: yes
+  tasks:
+    - name: Ensure the user 'jmadis' is created with bash shell and hashed password
+      user:
+        name: jmadis
+        comment: "James Madis"
+        shell: /bin/bash
+        state: present
+        create_home: yes
+        password: "$6$THkrXmhxERZuufdq$1geK1mOXJjaXGPGirad3Rpib5Fys9Gg.L3IZWyoD9pka1dYtLlTSl1MexfpaI4cBMa5r0N49JWMHjiwpQEF27."# Replace with the actual hash
+
+    - name: Force password change on first login for 'jmadis'
+      command: chage -d 0 jmadis

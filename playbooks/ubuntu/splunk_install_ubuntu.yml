@@ -1,0 +1,63 @@
+---
+- name: Install and configure Splunk
+  hosts: ubuntu  # Replace with your inventory group
+  become: yes
+  tasks:
+
+    # Update the apt package cache
+    - name: Update apt package cache
+      apt:
+        update_cache: yes
+
+    # Install dependencies (like curl, wget)
+    - name: Install dependencies
+      apt:
+        name:
+          - wget
+          - curl
+        state: present
+
+    # Download Splunk .deb package using the provided link
+    - name: Download Splunk
+      get_url:
+        url: https://download.splunk.com/products/splunk/releases/9.3.1/linux/splunk-9.3.1-0b8d769cb912-linux-2.6-amd64.deb
+        dest: /tmp/splunk-9.3.1-0b8d769cb912-linux-2.6-amd64.deb
+
+    # Install the Splunk package using apt
+    - name: Install Splunk
+      apt:
+        deb: /tmp/splunk-9.3.1-0b8d769cb912-linux-2.6-amd64.deb
+
+    # Set up Splunk ownership
+    - name: Create splunk user and group
+      user:
+        name: splunk
+        shell: /bin/bash
+        home: /opt/splunk
+        system: yes
+
+    # Change ownership of the Splunk installation directory
+    - name: Change ownership of Splunk directory
+      command: chown -R splunk:splunk /opt/splunk
+
+    # Enable Splunk to start at boot with the 'splunk' user
+    - name: Enable Splunk at boot
+      command: /opt/splunk/bin/splunk enable boot-start -user splunk
+      async: 300   # Timeout after 5 minutes
+      poll: 5
+
+    # Start Splunk service
+    - name: Start Splunk service
+      systemd:
+        name: splunk
+        state: started
+        enabled: yes
+
+    # Open the firewall for Splunk (default management port 8000)
+    - name: Allow Splunk port 8000 in UFW
+      ufw:
+        rule: allow
+        port: 8000
+        proto: tcp
+        comment: Allow Splunk management traffic
+

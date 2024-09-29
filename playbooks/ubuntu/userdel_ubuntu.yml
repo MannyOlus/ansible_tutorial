@@ -1,0 +1,10 @@
+---
+- name: Delete user account 'jmadis'
+  hosts: ubuntu
+  become: yes
+  tasks:
+    - name: Remove user 'jmadis' and their home directory
+      user:
+        name: jmadis
+        state: absent
+        remove: yes  # This will also remove the home directory and mail spool

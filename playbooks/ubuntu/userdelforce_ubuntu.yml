@@ -1,0 +1,20 @@
+---
+- name: Forcefully delete user account 'jmadis'
+  hosts: all
+  become: yes
+  tasks:
+    - name: Kill all processes owned by 'jmadis'
+      shell: |
+        pkill -u jmadis
+      ignore_errors: yes  # Continue even if no processes are running
+
+    - name: Wait for processes to terminate
+      pause:
+        seconds: 5
+
+    - name: Remove user 'jmadis' and their home directory
+      user:
+        name: jmadis
+        state: absent
+        remove: yes  # This will also remove the home directory and mail spool
+
